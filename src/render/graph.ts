@@ -124,7 +124,7 @@ function nodeSVG(n: GNode, o: GraphOpts): string {
       break;
     }
     case 'decision':
-      body = `<polygon class="box" points="${g.cx},${y} ${x + w},${g.cy} ${g.cx},${y + h} ${x},${g.cy}"/>` + wrap(label, 20).map((l, i) => T(l, y + h + 14 + i * 13, 'small')).join('');
+      body = `<polygon class="box" points="${g.cx},${y} ${x + w},${g.cy} ${g.cx},${y + h} ${x},${g.cy}"/>` + wrap(label, 22).map((l, i, arr) => T(l, y - 8 - (arr.length - 1 - i) * 13, 'small')).join('');
       break;
     case 'initial': body = `<circle class="fillshape" cx="${g.cx}" cy="${g.cy}" r="8"/>`; break;
     case 'final': body = `<circle class="box" cx="${g.cx}" cy="${g.cy}" r="11"/><circle class="fillshape" cx="${g.cx}" cy="${g.cy}" r="6"/>`; break;
