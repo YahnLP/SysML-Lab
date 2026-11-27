@@ -59,3 +59,10 @@ table.t th{background:var(--accent-bg)}
 .sr{position:absolute;left:-9999px}
 footer{max-width:940px;margin:2rem auto;padding:0 1rem;color:var(--mute);font-size:.88rem}
 @media print{header.top,footer,.noprint{display:none}body{background:#fff;color:#000}}
+.dgmwrap{margin:.5rem 0;overflow-x:auto}.dgmwrap .dgm{min-width:520px}
+.prompt{font-weight:600}.mute{color:var(--mute)}
+.tasks{padding-left:1.2rem}.elist{padding-left:1.2rem}.elist li{margin:.2rem 0}
+.locked{opacity:.85}.hintbox{margin:.5rem 0}
+.nav{justify-content:space-between;margin-top:1.5rem}
+@media print{header.top,.noprint,.skip,footer{display:none}}
+.dgmwrap .dgm{max-height:380px}
