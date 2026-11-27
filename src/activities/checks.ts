@@ -1,5 +1,5 @@
 import type {
-  Activity, BEdge, BuildAct, BuildSeqAct, EdgeKind, Fb, FillAct, IdentifyAct, MatchAct, OrderAct, QuizAct, Resp, TraceAct, Verdict,
+  Activity, BEdge, BuildAct, ExploreAct, BuildSeqAct, EdgeKind, Fb, FillAct, IdentifyAct, MatchAct, OrderAct, QuizAct, Resp, TraceAct, Verdict,
 } from '../types';
 
 const ok = (h: string): Fb => ({ k: 'ok', h });
@@ -7,7 +7,16 @@ const bad = (h: string): Fb => ({ k: 'bad', h });
 const li = (items: string[]): string => '<ul>' + items.map((i) => `<li>${i}</li>`).join('') + '</ul>';
 const clamp = (x: number): number => Math.max(0, Math.min(1, x));
 
-function checkQuiz(a: QuizAct, sel: number[]): Verdict {
+function checkQuiz(a: QuizAct, sel: number[], because?: number): Verdict {
+  const base = checkQuizBase(a, sel);
+  if (!a.because || !base.ok) return base;
+  if (because === undefined) return { ok: false, score: 0.5, fb: [{ k: 'warn', h: 'Ta réponse est bonne, mais dis aussi <b>pourquoi</b> : choisis la raison.' }] };
+  const b = a.because.options[because];
+  if (b?.ok) return { ok: true, score: 1, fb: [ok('<b>Exact, et tu sais pourquoi.</b> ' + b.why + (a.explain ? `<p>${a.explain}</p>` : ''))] };
+  return { ok: false, score: 0.5, fb: [bad('<b>La réponse est bonne, mais pas la raison.</b> ' + (b ? b.why : ''))] };
+}
+
+function checkQuizBase(a: QuizAct, sel: number[]): Verdict {
   const chosen = a.options.filter((_, i) => sel.includes(i));
   const wrong = chosen.filter((o) => !o.ok);
   const good = a.options.filter((o) => o.ok);
@@ -175,10 +184,18 @@ function checkBuildSeq(a: BuildSeqAct, msgs: { from: string; to: string; label: 
   return { ok: false, score, fb: [bad('<b>Pas encore.</b>' + li(items))] };
 }
 
+function checkExplore(a: ExploreAct, tried: string[]): Verdict {
+  const left = a.required.filter((x) => !tried.includes(x));
+  if (!left.length) return { ok: true, score: 1, fb: [ok('<b>Observation terminée.</b>')] };
+  const names = left.map((x) => a.actions.find((y) => y.id === x)?.label ?? x);
+  return { ok: false, score: (a.required.length - left.length) / a.required.length, fb: [{ k: 'warn', h: `Il te reste à essayer : ${names.join(' ; ')}.` }] };
+}
+
 export function check(a: Activity, r: Resp): Verdict {
   if (a.type !== r.type) throw new Error(`réponse de type ${r.type} pour une activité ${a.type}`);
   switch (a.type) {
-    case 'quiz': return checkQuiz(a, (r as Extract<Resp, { type: 'quiz' }>).sel);
+    case 'quiz': { const q = r as Extract<Resp, { type: 'quiz' }>; return checkQuiz(a, q.sel, q.because); }
+    case 'explore': return checkExplore(a, (r as Extract<Resp, { type: 'explore' }>).tried);
     case 'order': return checkOrder(a, (r as Extract<Resp, { type: 'order' }>).order);
     case 'fill': return checkFill(a, (r as Extract<Resp, { type: 'fill' }>).values);
     case 'match': return checkMatch(a, (r as Extract<Resp, { type: 'match' }>).answers);
@@ -192,7 +209,8 @@ export function check(a: Activity, r: Resp): Verdict {
 /** Réponse correcte, pour les tests de contenu et pour la correction en fin d'évaluation. */
 export function solve(a: Activity): Resp {
   switch (a.type) {
-    case 'quiz': return { type: 'quiz', sel: a.options.map((o, i) => (o.ok ? i : -1)).filter((i) => i >= 0) };
+    case 'quiz': return { type: 'quiz', sel: a.options.map((o, i) => (o.ok ? i : -1)).filter((i) => i >= 0), ...(a.because ? { because: a.because.options.findIndex((o) => o.ok) } : {}) };
+    case 'explore': return { type: 'explore', tried: [...a.required] };
     case 'order': return { type: 'order', order: a.items.map((_, i) => i) };
     case 'fill': return { type: 'fill', values: Object.fromEntries(a.slots.map((s) => [s.id, s.answer])) };
     case 'match': return { type: 'match', answers: a.pairs.map((p) => p.a) };
@@ -207,6 +225,7 @@ export function solve(a: Activity): Resp {
 export function blunder(a: Activity): Resp {
   switch (a.type) {
     case 'quiz': return { type: 'quiz', sel: a.options.map((o, i) => (o.ok ? -1 : i)).filter((i) => i >= 0).slice(0, 1) };
+    case 'explore': return { type: 'explore', tried: [] };
     case 'order': return { type: 'order', order: a.items.map((_, i) => a.items.length - 1 - i) };
     case 'fill': return { type: 'fill', values: Object.fromEntries(a.slots.map((s) => [s.id, (s.options.find((o) => o.v !== s.answer) ?? s.options[0])?.v ?? ''])) };
     case 'match': return { type: 'match', answers: a.pairs.map((p) => a.choices.find((c) => c !== p.a) ?? '') };

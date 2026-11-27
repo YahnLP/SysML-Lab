@@ -66,3 +66,10 @@ footer{max-width:940px;margin:2rem auto;padding:0 1rem;color:var(--mute);font-si
 .nav{justify-content:space-between;margin-top:1.5rem}
 @media print{header.top,.noprint,.skip,footer{display:none}}
 .dgmwrap .dgm{max-height:380px}
+.bar{height:8px;background:var(--line);border-radius:4px;overflow:hidden;margin:.3rem 0 1rem}.bar span{display:block;height:100%;background:var(--accent);width:0;transition:width .3s}
+.step .num{display:inline-block;width:1.7rem;height:1.7rem;line-height:1.7rem;text-align:center;border-radius:50%;background:var(--accent);color:#fff;font-size:.95rem;margin-right:.3rem}
+.guide{display:flex;gap:.7rem;align-items:flex-start;background:var(--accent-bg);border-radius:10px;padding:.7rem .9rem;margin:.4rem 0 .8rem}
+.guide .av{flex:none;width:2rem;height:2rem;border-radius:50%;background:var(--accent);color:#fff;text-align:center;line-height:2rem;font-weight:700}
+.word{border:1px dashed var(--accent);border-radius:8px;padding:.5rem .7rem;margin:.5rem 0}
+label.ruled{text-decoration:line-through;color:var(--mute)}
+fieldset.because{border-style:dashed}

@@ -34,6 +34,27 @@ describe.each(variants)('%s', (_n, p) => {
       for (const e of a.target.edges) { expect(ids.has(e.from) && ids.has(e.to), a.id).toBe(true); expect(a.kinds.some((k) => k.v === e.k), `${a.id}:${e.k}`).toBe(true); }
     }
   });
+  it("les explorations : actions requises et éléments surlignés existent", () => {
+    for (const a of acts) if (a.type === 'explore') {
+      const ids = idsOf(a.diagram);
+      for (const r of a.required) expect(a.actions.some((x) => x.id === r), `${a.id}:${r}`).toBe(true);
+      for (const x of a.actions) for (const i of [...(x.hl ?? []), ...Object.keys(x.mark ?? {})]) expect(ids.has(i), `${a.id}:${i}`).toBe(true);
+    }
+  });
+  it('les questions « pourquoi » ont une bonne raison unique', () => {
+    for (const a of acts) if (a.type === 'quiz' && a.because) expect(a.because.options.filter((o) => o.ok).length, a.id).toBe(1);
+  });
+  it('les modules d\'apprentissage sont des TP guidés, une activité par étape, avec consigne', () => {
+    for (const m of p.modules.filter((x) => !x.exam)) {
+      expect(m.steps, m.id).toBeDefined();
+      expect(m.steps!.map((x) => x.act)).toEqual(m.activities);
+      for (const st of m.steps!) expect(st.say.length, m.id).toBeGreaterThan(40);
+      expect(m.cours.length, m.id).toBe(0);
+    }
+  });
+  it('une réponse juste ne se devine pas : au plus 3 choix par question simple', () => {
+    for (const a of acts) if (a.type === 'quiz' && !a.multi) expect(a.options.length, a.id).toBeLessThanOrEqual(3);
+  });
   it('les trous : la bonne réponse est parmi les options', () => {
     for (const a of acts) if (a.type === 'fill') for (const s of a.slots) expect(s.options.some((o) => o.v === s.answer), `${a.id}:${s.id}`).toBe(true);
   });

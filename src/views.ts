@@ -3,7 +3,7 @@ import { IDS, getParcours, type PId } from './content';
 import { diagramSVG, esc } from './render';
 import { buildReport, correction, examScore, reportHTML, verifyReport, type ReportFile } from './report';
 import { caseState, levelFourDone, load, moduleStatus, newStore, recordAttempt, recordHint, rec, save, summary, type CaseState, type Store } from './state';
-import { DIAG_NAME, LEVEL_NAME, type CaseDef, type DiagKind, type Parcours } from './types';
+import { DIAG_NAME, LEVEL_NAME, type CaseDef, type DiagKind, type Parcours, type Step } from './types';
 
 let store: Store = load();
 const app = (): HTMLElement => document.getElementById('app') as HTMLElement;
@@ -61,14 +61,19 @@ function moduleView(pid: PId, mid: string): void {
 <h3>Objectifs</h3><ul>${m.objectives.map((o) => `<li>${esc(o)}</li>`).join('')}</ul>
 <p><b>Prérequis :</b> ${m.prereq.map(esc).join(', ')}</p><p><b>Tu as réussi si :</b> ${esc(m.success)}</p></div>
 <div class="note"><b>Pourquoi ce diagramme ?</b> ${m.pourquoi}</div>
-<h2>Cours</h2>${m.cours.map((c) => `<p>${c}</p>`).join('')}
+${m.cours.length ? `<h2>Cours</h2>${m.cours.map((c) => `<p>${c}</p>`).join('')}` : ''}
 ${m.exemple ? `<h2>Exemple commenté</h2>${diagramSVG(m.exemple.diagram, { numbered: true })}<ul>${m.exemple.notes.map((n) => `<li>${n}</li>`).join('')}</ul>` : ''}
 ${m.situation ? `<div class="note"><b>Situation :</b> ${esc(m.situation)}</div>` : ''}
-<h2>Activités <span class="mute" id="prog"></span></h2><div id="acts"></div>
+<h2>${m.steps ? 'Ta mission, pas à pas' : 'Activités'} <span class="mute" id="prog"></span></h2>${m.steps ? '<div class="bar"><span id="barfill"></span></div>' : ''}<div id="acts"></div>
 <div class="row nav"><span>${prev ? '← ' + nav(prev) : ''}</span><span>${next ? nav(next) + ' →' : ''}</span></div>`;
-  const prog = (): void => { const n = m.activities.filter((a) => rec(store, pid, a.id).ok).length; (document.getElementById('prog') as HTMLElement).textContent = `(${n}/${m.activities.length} réussies)`; };
+  const prog = (): void => {
+    const n = m.activities.filter((a) => rec(store, pid, a.id).ok).length;
+    (document.getElementById('prog') as HTMLElement).textContent = m.steps ? `(étape ${Math.min(n + 1, m.activities.length)} sur ${m.activities.length})` : `(${n}/${m.activities.length} réussies)`;
+    const f = document.getElementById('barfill'); if (f) f.style.width = `${Math.round((100 * n) / m.activities.length)}%`;
+  };
   prog();
   const host = document.getElementById('acts') as HTMLElement;
+  if (m.steps) { guidedSteps(host, pid, m.steps, prog); return; }
   m.activities.forEach((a, i) => {
     const card = document.createElement('section');
     card.className = 'card act'; card.setAttribute('aria-label', `Activité ${i + 1}`);
@@ -76,6 +81,35 @@ ${m.situation ? `<div class="note"><b>Situation :</b> ${esc(m.situation)}</div>`
     mountActivity(card, a, { exam: false, onCheck: (v) => { recordAttempt(store, pid, a.id, v); save(store); prog(); }, onHint: () => { recordHint(store, pid, a.id); save(store); } });
     card.insertAdjacentHTML('afterbegin', `<h3>Activité ${i + 1}</h3>`);
   });
+}
+
+/** TP guidé : une étape à la fois ; la suivante se débloque quand l'actuelle est réussie ; le mot technique vient après l'action. */
+function guidedSteps(host: HTMLElement, pid: PId, steps: Step[], prog: () => void): void {
+  const cards: HTMLElement[] = [];
+  const ok = (i: number): boolean => rec(store, pid, (steps[i] as Step).act.id).ok;
+  const reveal = (i: number): void => { const c = cards[i]; if (c) c.hidden = false; };
+  const after = (i: number, card: HTMLElement): void => {
+    const s = steps[i] as Step;
+    card.querySelector('.after')?.remove();
+    const box = document.createElement('div');
+    box.className = 'after';
+    box.innerHTML = (s.debrief ? `<div class="note">${s.debrief}</div>` : '') + (s.name ? `<div class="word"><span class="chip">Nouveau mot</span> <b>${s.name.w}</b> : ${s.name.def}</div>` : '');
+    const last = i === steps.length - 1;
+    box.insertAdjacentHTML('beforeend', last ? '<p><b>Mission terminée.</b> Bravo : passe au module suivant.</p>' : '<p><button class="btn primary" data-next="1">Étape suivante</button></p>');
+    card.appendChild(box);
+    box.querySelector('[data-next]')?.addEventListener('click', () => { reveal(i + 1); cards[i + 1]?.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+  };
+  steps.forEach((s, i) => {
+    const card = document.createElement('section');
+    card.className = 'card act step'; card.hidden = true; card.setAttribute('aria-label', `Étape ${i + 1}`);
+    card.innerHTML = `<h3><span class="num">${i + 1}</span> Étape ${i + 1} sur ${steps.length}</h3><div class="guide"><span class="av" aria-hidden="true">?</span><div>${s.say}</div></div><div class="stepact"></div>`;
+    host.appendChild(card); cards.push(card);
+    const slot = card.querySelector('.stepact') as HTMLElement;
+    mountActivity(slot, s.act, { exam: false, onCheck: (v) => { recordAttempt(store, pid, s.act.id, v); save(store); prog(); if (v.ok) after(i, card); }, onHint: () => { recordHint(store, pid, s.act.id); save(store); } });
+  });
+  // reprise : on rouvre jusqu'à la première étape non réussie
+  let first = steps.findIndex((_, i) => !ok(i)); if (first < 0) first = steps.length - 1;
+  for (let i = 0; i <= first; i++) { reveal(i); if (ok(i)) after(i, cards[i] as HTMLElement); }
 }
 
 /* ---------------- carnet ---------------- */
