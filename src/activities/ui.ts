@@ -84,7 +84,7 @@ export function mountActivity(host: HTMLElement, a: Activity, ctx: ActCtx): void
     const picks: string[] = a.tasks.map(() => '');
     let active = 0;
     const draw = (): void => {
-      body.innerHTML = `<ol class="tasks">${a.tasks.map((t, i) => `<li><label><input type="radio" name="tk${uid}" value="${i}"${i === active ? ' checked' : ''}> ${esc(t.ask)}</label> <span class="chip">${picks[i] ? 'choisi' : 'à choisir'}</span></li>`).join('')}</ol><div class="pick">${dg(a.diagram, { sel: true, hl: picks.filter(Boolean) })}</div><p class="mute">Clique (ou Entrée) sur l'élément du diagramme qui répond à la consigne sélectionnée.</p>`;
+      body.innerHTML = `<div class="pick">${dg(a.diagram, { sel: true, hl: picks.filter(Boolean) })}</div><ol class="tasks">${a.tasks.map((t, i) => `<li><label><input type="radio" name="tk${uid}" value="${i}"${i === active ? ' checked' : ''}> ${esc(t.ask)}</label> <span class="chip">${picks[i] ? 'choisi' : 'à choisir'}</span></li>`).join('')}</ol><p class="mute">Clique (ou Entrée) sur l'élément du dessin qui répond à la consigne sélectionnée.</p>`;
       body.querySelectorAll<HTMLInputElement>('input[type=radio]').forEach((r) => r.addEventListener('change', () => { active = Number(r.value); }));
       onPick(body, '.pick', (id) => { picks[active] = id; const nx = picks.findIndex((p) => !p); if (nx >= 0) active = nx; draw(); });
     };
@@ -124,6 +124,7 @@ export function mountActivity(host: HTMLElement, a: Activity, ctx: ActCtx): void
     mountBuildSeq(body, a, (g) => { getResp = g; });
   }
 
+  if (['explore', 'identify', 'trace', 'build', 'buildseq', 'fill'].includes(a.type) || (a.type === 'quiz' && a.diagrams?.length) || (a.type === 'match' && a.diagram)) body.classList.add('split');
   /* ---------- commandes communes ---------- */
   const lock = (): void => { locked = true; body.setAttribute('inert', ''); body.classList.add('locked'); (actions.querySelector('[data-ok]') as HTMLButtonElement | null)?.setAttribute('disabled', ''); };
   actions.innerHTML = `<button class="btn primary" data-ok="1">Valider</button>` + (!ctx.exam && a.hints?.length ? '<button class="btn" data-h="1">Un indice</button>' : '') + (!ctx.exam && a.why ? '<button class="btn" data-w="1">Pourquoi ?</button>' : '');

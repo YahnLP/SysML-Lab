@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { blunder, check, solve } from '../src/activities/checks';
-import { IDS, getParcours } from '../src/content';
+import { IDS, LEGEND, getParcours, intro } from '../src/content';
 import { edgeId } from '../src/render';
 import type { Activity, Diagram, Parcours } from '../src/types';
 
@@ -82,4 +82,20 @@ describe('variantes d\'évaluation', () => {
     const a = JSON.stringify(getParcours('ciel', 'Dupont Marie')), b = JSON.stringify(getParcours('ciel', 'Martin Paul'));
     expect(a).not.toBe(b);
   });
+});
+
+describe('introduction', () => {
+  const m = intro();
+  it('est un TP guidé dont les solutions sont acceptées et les erreurs refusées', () => {
+    expect(m.steps?.length).toBeGreaterThanOrEqual(8);
+    for (const a of m.activities) { expect(check(a, solve(a)).ok, a.id).toBe(true); expect(check(a, blunder(a)).ok, a.id).toBe(false); }
+  });
+  it('présente chaque famille de formes avant de dessiner', () => {
+    const forms = m.activities.find((a) => a.id === 'intro-a3b');
+    const draw = m.activities.findIndex((a) => a.id === 'intro-a4');
+    expect(forms?.type).toBe('explore');
+    expect(m.activities.findIndex((a) => a.id === 'intro-a3b')).toBeLessThan(draw);
+    if (forms?.type === 'explore') { const ids = idsOf(forms.diagram); for (const x of forms.actions) for (const i of x.hl ?? []) expect(ids.has(i), i).toBe(true); }
+  });
+  it("l'aide-mémoire couvre les formes et les neuf types de diagrammes", () => { expect(LEGEND.length).toBeGreaterThanOrEqual(10); });
 });

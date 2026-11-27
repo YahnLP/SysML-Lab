@@ -14,3 +14,5 @@ export function getParcours(id: PId, examName?: string): Parcours {
   const seed = hashString(`${id}|${examName.trim().toLowerCase()}`);
   return f(makeVars(seed), seed);
 }
+
+export { intro, LEGEND } from './intro';
