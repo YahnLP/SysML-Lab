@@ -1,0 +1,21 @@
+{
+  "name": "sysml-lab",
+  "version": "1.0.0",
+  "license": "EUPL-1.2",
+  "author": "Yahn LE PRETTRE",
+  "private": true,
+  "description": "Parcours interactifs pour apprendre à lire, exploiter et compléter des diagrammes SysML (Bac pro CIEL, TSSR, BTS SIO SISR)",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build": "tsc --noEmit && vite build && node tools/publish.mjs"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "vite": "^5.4.0",
+    "vite-plugin-singlefile": "^2.0.0",
+    "vitest": "^2.1.0"
+  }
+}
