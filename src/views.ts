@@ -112,7 +112,7 @@ function examView(pid: PId): void {
     app().innerHTML = `<p><a href="#/p/${pid}">← ${esc(base.name)}</a></p><h1>Évaluation finale — ${esc(base.name)}</h1>
 <div class="card"><ul><li>Une seule tentative par question, sans indice ni explication.</li><li>La correction détaillée et ta note sur 20 apparaissent à la fin.</li><li>Les valeurs du cas (noms de machines, adresses) dépendent de ton nom.</li><li>Tu peux quitter et reprendre : tes réponses sont conservées dans ce navigateur.</li></ul>
 <label>Ton nom <input type="text" id="en" value="${esc(store.name)}"></label>
-<p class="mute">Grille proposée (à valider) : ${base.grille.map((c) => `${esc(c.label)} ${c.pts} pts`).join(' ; ')}.</p>
+<p class="mute">Grille : ${base.grille.map((c) => `${esc(c.label)} ${c.pts} pts`).join(' ; ')}.</p>
 <button class="btn primary" id="go">Commencer l'évaluation</button> <span id="err" class="mute"></span></div>`;
     (document.getElementById('go') as HTMLElement).addEventListener('click', () => {
       const n = (document.getElementById('en') as HTMLInputElement).value.trim();
@@ -142,7 +142,7 @@ function examView(pid: PId): void {
   const cor = correction(p, ex);
   app().innerHTML = `<p><a href="#/p/${pid}">← ${esc(p.name)}</a></p><h1>Résultat : ${sc.total} / 20</h1>
 <table class="t"><thead><tr><th>Critère</th><th>Points</th></tr></thead><tbody>${sc.crit.map((c) => `<tr><td>${esc(c.label)}</td><td>${c.got} / ${c.pts}</td></tr>`).join('')}</tbody></table>
-<p class="mute">Barème proposé, à valider. Cette note décrit un exercice d'entraînement.</p>
+<p class="mute">Cette note décrit un exercice d'entraînement.</p>
 <h2>Correction</h2>${cor.map((c, i) => `<div class="card"><h3>Question ${i + 1} ${c.score >= 1 ? '<span class="st ok">Juste</span>' : c.score > 0 ? '<span class="st acq">En partie</span>' : '<span class="st warn">À revoir</span>'}</h3><p>${c.prompt}</p><div class="fb ok"><b>Réponse attendue et raison :</b> ${c.html}</div></div>`).join('')}
 <div class="row noprint"><button class="btn" id="pr">Imprimer</button><button class="btn" id="dj">Rapport (JSON)</button><button class="btn" id="dh">Rapport (HTML)</button><button class="btn" id="rs">Refaire l'évaluation</button></div>`;
   (document.getElementById('pr') as HTMLElement).addEventListener('click', () => window.print());
@@ -189,7 +189,7 @@ function about(): void {
   app().innerHTML = `<p><a href="#/">← Accueil</a></p><h1>Méthode et statut du contenu</h1>
 <div class="card"><h3>Principe</h3><p>Chaque notion passe par le même geste : observer un exemple commenté, repérer, compléter, puis construire. Chaque réponse fausse est expliquée par la règle de notation ou la logique du système qu'elle enfreint ; chaque réponse juste dit pourquoi.</p>
 <h3>Niveaux</h3><ul>${([1, 2, 3, 4] as const).map((l) => `<li><b>Niveau ${l}</b> : ${LEVEL_NAME[l]}</li>`).join('')}</ul>
-<h3>Statut</h3><p>Les niveaux visés par formation, les barèmes sur 20, les seuils du carnet et le cas NovaTech sont des propositions pédagogiques <b>à valider</b>. Les correspondances avec les référentiels ne sont pas encore vérifiées. SysML ne remplace pas les schémas réseau.</p>
+<h3>Statut</h3><p>Les niveaux visés par formation, les barèmes sur 20, les seuils du carnet et le cas NovaTech sont des choix pédagogiques, pas des prescriptions des référentiels. SysML ne remplace pas les schémas réseau.</p>
 <h3>Données</h3><p>Aucune donnée n'est envoyée : la progression reste dans ton navigateur. Exporte ton rapport pour le transmettre.</p></div>`;
 }
 

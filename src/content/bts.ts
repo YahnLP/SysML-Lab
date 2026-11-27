@@ -244,7 +244,7 @@ export function bts(v: Vars = V0, seed = 0): Parcours {
     id: 'bts', name: 'BTS SIO SISR', levelLabel: 'Niveaux 1 à 3 (4 optionnel)', target: 3,
     orient: 'Lire, produire et vérifier la cohérence des diagrammes d\'une infrastructure.',
     situation: "Tu es technicien supérieur chez NovaTech : tu documentes et fais évoluer le modèle de l'infrastructure.",
-    statut: 'Niveaux visés : choix pédagogique proposé (à valider avec le référentiel).',
+    statut: 'Niveaux visés : choix pédagogique.',
     cases: [
       { d: 'uc', level: 1 }, { d: 'uc', level: 2 }, { d: 'act', level: 1 }, { d: 'act', level: 2 },
       { d: 'req', level: 1 }, { d: 'req', level: 2 }, { d: 'req', level: 3 },

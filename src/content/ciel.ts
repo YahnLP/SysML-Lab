@@ -120,7 +120,7 @@ export function ciel(v: Vars = V0, seed = 0): Parcours {
     id: 'ciel', name: 'Bac pro CIEL', levelLabel: 'Niveaux 1 et 2', target: 2,
     orient: 'Lire un dossier technique et en expliquer les informations.',
     situation: "Tu es technicien à NovaTech : tu lis les diagrammes du dossier pour comprendre une installation.",
-    statut: 'Niveaux visés : choix pédagogique proposé (à valider avec le référentiel).',
+    statut: 'Niveaux visés : choix pédagogique.',
     cases: [
       { d: 'req', level: 1 }, { d: 'req', level: 2 }, { d: 'bdd', level: 1 }, { d: 'bdd', level: 2 },
       { d: 'ibd', level: 1 }, { d: 'ibd', level: 2 }, { d: 'seq', level: 1 }, { d: 'seq', level: 2 },

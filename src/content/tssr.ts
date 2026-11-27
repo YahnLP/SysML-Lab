@@ -154,7 +154,7 @@ export function tssr(v: Vars = V0, seed = 0): Parcours {
     id: 'tssr', name: 'TSSR (titre professionnel)', levelLabel: 'Niveaux 1 à 3 (3 ponctuel)', target: 3,
     orient: 'Utiliser les diagrammes pour comprendre, diagnostiquer et mettre à jour après intervention.',
     situation: "Tu es technicien d'exploitation à NovaTech : tu localises des pannes avec le modèle.",
-    statut: 'Niveaux visés : choix pédagogique proposé (à valider avec le référentiel). SysML ne remplace pas les schémas réseau.',
+    statut: 'Niveaux visés : choix pédagogique. SysML ne remplace pas les schémas réseau.',
     cases: [
       { d: 'bdd', level: 1 }, { d: 'bdd', level: 2 }, { d: 'ibd', level: 1 }, { d: 'ibd', level: 2 }, { d: 'ibd', level: 3 },
       { d: 'seq', level: 1 }, { d: 'seq', level: 2 }, { d: 'req', level: 1 }, { d: 'act', level: 1 },
