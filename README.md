@@ -38,4 +38,4 @@ Chaque faute est expliquée par la règle de notation ou la logique du système 
 
 ## Statut
 
-Contenu **à valider** : niveaux par formation, barèmes sur 20, seuils du carnet, cas NovaTech, correspondance avec les référentiels. SysML ne remplace pas les schémas réseau. Licence : EUPL-1.2 proposée, à confirmer.
+Niveaux par formation, barèmes sur 20, seuils du carnet et cas NovaTech sont des choix pédagogiques, pas des prescriptions des référentiels. SysML ne remplace pas les schémas réseau. Licence : EUPL-1.2.

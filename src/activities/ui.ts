@@ -34,12 +34,23 @@ export function mountActivity(host: HTMLElement, a: Activity, ctx: ActCtx): void
   const fbs = host.querySelector('.fbs') as HTMLElement;
   let getResp: () => Resp | null = () => null;
   let after: (v: Verdict) => void = () => undefined;
+  let autoValidate: () => void = () => undefined;
 
   /* ---------- par type ---------- */
   if (a.type === 'quiz') {
     const name = `q${++uid}`;
-    body.innerHTML = (a.diagrams ?? []).map((d) => dg(d)).join('') + `<fieldset><legend class="sr">Réponses</legend>${a.options.map((o, i) => `<label><input type="${a.multi ? 'checkbox' : 'radio'}" name="${name}" value="${i}"> ${esc(o.t)}</label>`).join('')}</fieldset>` + (a.multi ? '<p class="mute">Plusieurs réponses possibles.</p>' : '');
-    getResp = () => ({ type: 'quiz', sel: Array.from(body.querySelectorAll<HTMLInputElement>('input:checked')).map((i) => Number(i.value)) });
+    body.innerHTML = (a.diagrams ?? []).map((d) => dg(d)).join('') + `<fieldset><legend class="sr">Réponses</legend>${a.options.map((o, i) => `<label><input type="${a.multi ? 'checkbox' : 'radio'}" name="${name}" value="${i}"> ${esc(o.t)}</label>`).join('')}</fieldset>` + (a.multi ? '<p class="mute">Plusieurs réponses possibles.</p>' : '')
+      + (a.because ? `<fieldset class="because"><legend>${a.because.prompt}</legend>${a.because.options.map((o, i) => `<label><input type="radio" name="${name}b" value="${i}"> ${esc(o.t)}</label>`).join('')}</fieldset>` : '');
+    getResp = () => {
+      const sel = Array.from(body.querySelectorAll<HTMLInputElement>(`input[name="${name}"]:checked`)).map((i) => Number(i.value));
+      const b = body.querySelector<HTMLInputElement>(`input[name="${name}b"]:checked`);
+      return { type: 'quiz', sel, ...(b ? { because: Number(b.value) } : {}) };
+    };
+    after = (v) => {
+      if (v.ok) return;
+      // les choix déjà reconnus faux sont grisés : on ne peut pas tout essayer à la suite
+      body.querySelectorAll<HTMLInputElement>(`input[name="${name}"]:checked`).forEach((i) => { if (!a.options[Number(i.value)]?.ok) { i.checked = false; i.disabled = true; i.parentElement?.classList.add('ruled'); } });
+    };
   } else if (a.type === 'order') {
     const arr = a.start.slice();
     const draw = (): void => {
@@ -73,7 +84,7 @@ export function mountActivity(host: HTMLElement, a: Activity, ctx: ActCtx): void
     const picks: string[] = a.tasks.map(() => '');
     let active = 0;
     const draw = (): void => {
-      body.innerHTML = `<ol class="tasks">${a.tasks.map((t, i) => `<li><label><input type="radio" name="tk${uid}" value="${i}"${i === active ? ' checked' : ''}> ${esc(t.ask)}</label> <span class="chip">${picks[i] ? 'choisi' : 'à choisir'}</span></li>`).join('')}</ol><div class="pick">${dg(a.diagram, { sel: true, hl: picks.filter(Boolean) })}</div><p class="mute">Clique (ou Entrée) sur l'élément du diagramme qui répond à la consigne sélectionnée.</p>`;
+      body.innerHTML = `<div class="pick">${dg(a.diagram, { sel: true, hl: picks.filter(Boolean) })}</div><ol class="tasks">${a.tasks.map((t, i) => `<li><label><input type="radio" name="tk${uid}" value="${i}"${i === active ? ' checked' : ''}> ${esc(t.ask)}</label> <span class="chip">${picks[i] ? 'choisi' : 'à choisir'}</span></li>`).join('')}</ol><p class="mute">Clique (ou Entrée) sur l'élément du dessin qui répond à la consigne sélectionnée.</p>`;
       body.querySelectorAll<HTMLInputElement>('input[type=radio]').forEach((r) => r.addEventListener('change', () => { active = Number(r.value); }));
       onPick(body, '.pick', (id) => { picks[active] = id; const nx = picks.findIndex((p) => !p); if (nx >= 0) active = nx; draw(); });
     };
@@ -89,16 +100,35 @@ export function mountActivity(host: HTMLElement, a: Activity, ctx: ActCtx): void
     };
     draw();
     getResp = () => ({ type: 'trace', path: path.slice() });
+  } else if (a.type === 'explore') {
+    const tried: string[] = [];
+    let cur: (typeof a.actions)[number] | undefined;
+    const draw = (): void => {
+      body.innerHTML = `<div class="pick">${dg(a.diagram, { ...(cur?.hl ? { hl: cur.hl } : {}), ...(cur?.mark ? { mark: cur.mark } : {}) })}</div>
+<div class="row">${a.actions.map((x) => `<button class="btn${tried.includes(x.id) ? '' : ' primary'}" data-x="${esc(x.id)}">${esc(x.label)}${tried.includes(x.id) ? ' ✓' : ''}</button>`).join('')}</div>
+<div class="note xres" aria-live="polite">${cur ? cur.result : 'Choisis une action ci-dessus pour voir ce qui se passe.'}</div>
+<p class="mute">À essayer : ${a.required.map((r) => `${tried.includes(r) ? '✓ ' : ''}${esc(a.actions.find((x) => x.id === r)?.label ?? r)}`).join(' · ')}</p>`;
+      body.querySelectorAll<HTMLButtonElement>('[data-x]').forEach((b) => b.addEventListener('click', () => {
+        const x = a.actions.find((y) => y.id === b.dataset.x); if (!x) return;
+        cur = x; if (!tried.includes(x.id)) tried.push(x.id);
+        draw();
+        (body.querySelector(`[data-x="${x.id}"]`) as HTMLElement | null)?.focus();
+        if (a.required.every((r) => tried.includes(r))) autoValidate();
+      }));
+    };
+    draw();
+    getResp = () => ({ type: 'explore', tried: tried.slice() });
   } else if (a.type === 'build') {
     mountBuild(body, a, (g) => { getResp = g; });
   } else if (a.type === 'buildseq') {
     mountBuildSeq(body, a, (g) => { getResp = g; });
   }
 
+  if (['explore', 'identify', 'trace', 'build', 'buildseq', 'fill'].includes(a.type) || (a.type === 'quiz' && a.diagrams?.length) || (a.type === 'match' && a.diagram)) body.classList.add('split');
   /* ---------- commandes communes ---------- */
   const lock = (): void => { locked = true; body.setAttribute('inert', ''); body.classList.add('locked'); (actions.querySelector('[data-ok]') as HTMLButtonElement | null)?.setAttribute('disabled', ''); };
   actions.innerHTML = `<button class="btn primary" data-ok="1">Valider</button>` + (!ctx.exam && a.hints?.length ? '<button class="btn" data-h="1">Un indice</button>' : '') + (!ctx.exam && a.why ? '<button class="btn" data-w="1">Pourquoi ?</button>' : '');
-  actions.querySelector('[data-ok]')?.addEventListener('click', () => {
+  const validate = (): void => {
     if (locked) return;
     const r = getResp();
     if (!r) { fbs.innerHTML = '<div class="fb warn">Réponds d\'abord à la question.</div>'; return; }
@@ -109,8 +139,20 @@ export function mountActivity(host: HTMLElement, a: Activity, ctx: ActCtx): void
     if (ctx.exam) { fbs.innerHTML = '<div class="fb ok">Réponse enregistrée. La correction sera donnée à la fin de l\'évaluation.</div>'; lock(); return; }
     fbs.innerHTML = fbHtml(v);
     after(v);
-    if (v.ok) { if (a.why) fbs.insertAdjacentHTML('beforeend', `<div class="note"><b>À retenir :</b> ${a.why}</div>`); lock(); host.classList.add('done'); }
-  });
+    if (v.ok) { if (a.why) fbs.insertAdjacentHTML('beforeend', `<div class="note"><b>À retenir :</b> ${a.why}</div>`); lock(); host.classList.add('done'); return; }
+    if (!v.fb.some((f) => f.k === 'bad')) return; // simple consigne incomplète : pas de relecture imposée
+    // après une erreur : lire l'explication avant de pouvoir réessayer
+    const okBtn = actions.querySelector('[data-ok]') as HTMLButtonElement;
+    okBtn.disabled = true;
+    const again = document.createElement('button');
+    again.className = 'btn primary'; again.textContent = "J'ai lu l'explication, je réessaie";
+    again.addEventListener('click', () => { okBtn.disabled = false; again.remove(); fbs.innerHTML = ''; okBtn.focus(); });
+    actions.appendChild(again);
+    again.focus();
+  };
+  autoValidate = validate;
+  actions.querySelector('[data-ok]')?.addEventListener('click', validate);
+  if (a.type === 'explore') (actions.querySelector('[data-ok]') as HTMLElement | null)?.remove();
   actions.querySelector('[data-h]')?.addEventListener('click', () => {
     const hs = a.hints ?? [];
     if (hint === 0) ctx.onHint();

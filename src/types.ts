@@ -45,7 +45,16 @@ export interface Common {
   weight?: number;
 }
 export interface QuizOpt { t: string; ok: boolean; why: string }
-export interface QuizAct extends Common { type: 'quiz'; multi?: boolean; options: QuizOpt[]; diagrams?: Diagram[]; note?: string; explain?: string }
+/** `because` : seconde question « pourquoi ? » ; la réponse ne compte que si les deux sont justes (empêche de deviner). */
+export interface QuizAct extends Common { type: 'quiz'; multi?: boolean; options: QuizOpt[]; diagrams?: Diagram[]; note?: string; explain?: string; because?: { prompt: string; options: QuizOpt[] } }
+/** Observer en manipulant : chaque action surligne ou met en panne des éléments et explique la conséquence. */
+export interface ExploreAct extends Common {
+  type: 'explore';
+  diagram: Diagram;
+  actions: { id: string; label: string; hl?: string[]; mark?: Record<string, 'bad' | 'ok'>; result: string }[];
+  /** Actions à essayer pour terminer l'observation. */
+  required: string[];
+}
 export interface OrderAct extends Common {
   type: 'order';
   /** Éléments dans le bon ordre. */
@@ -92,11 +101,12 @@ export interface BuildSeqAct extends Common {
   /** Explication par message attendu (pourquoi à cette place). */
   reasons: string[];
 }
-export type Activity = QuizAct | OrderAct | FillAct | MatchAct | IdentifyAct | TraceAct | BuildAct | BuildSeqAct;
+export type Activity = QuizAct | OrderAct | FillAct | MatchAct | IdentifyAct | TraceAct | BuildAct | BuildSeqAct | ExploreAct;
 
 /* ---------- réponses ---------- */
 export type Resp =
-  | { type: 'quiz'; sel: number[] }
+  | { type: 'quiz'; sel: number[]; because?: number }
+  | { type: 'explore'; tried: string[] }
   | { type: 'order'; order: number[] }
   | { type: 'fill'; values: Record<string, string> }
   | { type: 'match'; answers: string[] }
@@ -109,7 +119,17 @@ export interface Fb { k: 'ok' | 'bad' | 'warn'; h: string }
 export interface Verdict { ok: boolean; score: number; fb: Fb[] }
 
 /* ---------- modules et parcours ---------- */
+/** Étape d'un TP guidé : une consigne en mots simples, une action, puis le mot technique donné après coup. */
+export interface Step {
+  say: string;
+  act: Activity;
+  /** Mot nouveau, donné après que l'élève a observé ou réussi. */
+  name?: { w: string; def: string };
+  debrief?: string;
+}
 export interface Module {
+  /** TP guidé : les étapes se débloquent une à une ; `activities` en est la liste à plat. */
+  steps?: Step[];
   id: string;
   n: string;
   title: string;

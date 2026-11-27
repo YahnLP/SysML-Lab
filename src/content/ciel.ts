@@ -1,103 +1,84 @@
 import type { Module, Parcours } from '../types';
-import { V0, bddAuth, ibdAuth, multi, netSite, quiz, reqAuth, seqAuth, tg, N, Y, type Vars, permutation, hashString } from './common';
-import { bddFill, bddQuiz, bddRead, ibdFill, ibdIdentify, ibdTrace, netVsIbd, reqCoverage, reqFill, reqIdentify, seqFill, seqIdentify, seqOrder } from './lib';
+import { V0, bddAuth, ibdAuth, multi, quiz, reqAuth, tg, N, Y, type Vars, permutation, hashString } from './common';
+import { exploreBdd, exploreIbd, exploreReq, exploreSeq, guided, justifyOrder, netOne, one, pairDoc, predict, st, whyQuiz } from './steps';
+import { bddFill, bddQuiz, bddRead, ibdFill, ibdIdentify, ibdTrace, reqCoverage, reqFill, seqFill, seqIdentify, seqOrder } from './lib';
 
 export function ciel(v: Vars = V0, seed = 0): Parcours {
   const s = seed || 0;
   const modules: Module[] = [
-    {
-      id: 'ciel-c0', n: 'C0', title: 'Lire un dossier technique', level: 1,
-      objectives: ["Repérer à quoi sert un modèle SysML dans un dossier technique", "Distinguer un schéma réseau d'un diagramme SysML"],
-      prereq: ["Aucun : ce module part d'un cas concret NovaTech"],
-      success: 'Les deux activités réussies.',
-      pourquoi: "Un système est décrit par plusieurs documents. SysML ajoute ce que le schéma réseau ne dit pas : à quoi sert chaque élément et comment ils coopèrent.",
-      cours: [
-        "<b>NovaTech</b> est une entreprise fictive de quatre sites. Le dossier technique contient un schéma réseau (où sont les machines) et des diagrammes SysML (ce que chacune fait).",
-        "Tu n'auras pas à tout écrire en SysML : tu dois savoir <b>lire</b> un diagramme, expliquer ce qu'il dit et le <b>compléter</b> dans des cas simples.",
-        "Le diagramme dépend de la question : <b>exigences</b> (que doit faire le système ?), <b>blocs</b> (de quoi est-il fait ?), <b>blocs internes</b> (comment sont-ils reliés ?), <b>séquence</b> (dans quel ordre échangent-ils ?).",
-      ],
-      exemple: { diagram: netSite(v), notes: ["Le schéma réseau situe le poste, le commutateur et les deux serveurs.", "Il ne dit pas lequel vérifie les mots de passe : c'est le rôle du modèle."] },
-      activities: [
-        netVsIbd('ciel-c0-a1', {}, v),
-        quiz('ciel-c0-a2', 'Quelle question te pose-t-on pour choisir le diagramme de séquence ?', [
-          Y("Dans quel ordre les éléments échangent-ils ?", "La séquence se lit de haut en bas : elle montre l'ordre des messages."),
-          N('De quoi le système est-il composé ?', "C'est la question du diagramme de blocs (BDD)."),
-          N('Quelle durée maximale accepter ?', "C'est une exigence, lue dans le diagramme d'exigences."),
-        ], { why: "Choisir le bon diagramme évite de chercher une information là où elle n'est pas." }),
-      ],
-    },
-    {
-      id: 'ciel-c1', n: 'C1', title: 'Les exigences : que doit faire le système ?', level: 2,
-      objectives: ['Lire une exigence et ses liens (satisfy, verify, contient)', 'Compléter les liens manquants dans un diagramme simple'],
+    guided({
+      id: 'ciel-c0', n: 'C0', title: 'Mission : le poste qui ne se connecte plus', level: 1,
+      objectives: ["Comprendre à quoi sert un diagramme SysML dans un dossier technique", "Savoir quel document ouvrir pour quelle question"],
+      prereq: ['Aucun : tout est expliqué en route'],
+      success: 'Les trois étapes réussies.',
+      pourquoi: "Un technicien ne devine pas : il ouvre le dossier technique. Ici, tu vas voir pourquoi un seul dessin ne suffit pas.",
+      situation: `Lundi matin, Lina travaille au site ${v.site}. Elle n'arrive plus à ouvrir sa session sur ${v.pc}.`,
+    }, [
+      st(`Le technicien ouvre le dossier technique. Première page : un dessin des machines du site. <b>Clique le poste de Lina, ${v.pc}.</b>`, netOne('ciel-c0-a1', v), { w: 'schéma réseau', def: 'le dessin qui montre où sont les machines et comment elles sont branchées.' }),
+      st("Le technicien teste : le poste joint bien le serveur. Pourtant Lina reste bloquée. Réfléchis à ce que le dessin précédent <b>ne te dit pas</b>.", whyQuiz('ciel-c0-a2', v), { w: 'diagramme SysML', def: "un dessin qui décrit <b>ce que fait chaque élément</b> et comment les éléments travaillent ensemble. SysML est le nom de ce langage de dessin." }),
+      st("Dernier réflexe de technicien : savoir quel document ouvrir selon la question posée.", pairDoc('ciel-c0-a3', v)),
+    ]),
+    guided({
+      id: 'ciel-c1', n: 'C1', title: 'Mission : ce que le client attend', level: 2,
+      objectives: ['Lire une promesse faite au client et son numéro', 'Savoir qui la tient et qui la contrôle', 'Compléter les liens manquants'],
       prereq: ['C0'],
-      success: 'Identifier les trois éléments demandés et compléter les deux liens.',
-      pourquoi: "Une exigence est une promesse faite au client. Les liens montrent qui la tient (satisfy) et comment on le contrôle (verify).",
-      cours: [
-        "Une <b>exigence</b> est une phrase courte et vérifiable, avec un identifiant (EX-02). Elle peut contenir des sous-exigences (signe ⊕).",
-        "Un <b>bloc</b> la <b>satisfait</b> (flèche en pointillés du bloc vers l'exigence). Un <b>test</b> la <b>vérifie</b> (du test vers l'exigence).",
-        "Une exigence sans test n'est pas contrôlée : on ne sait pas si elle est respectée.",
-      ],
-      exemple: { diagram: reqAuth(), notes: ["EX-00 contient trois sous-exigences (⊕).", "Le serveur satisfait EX-01 et EX-02 ; l'annuaire satisfait EX-03.", "Chaque exigence a son test : T-01, T-02, T-03."] },
-      activities: [
-        reqIdentify('ciel-c1-a1', { tag: tg('req', 1), hints: ["Lis le texte de chaque exigence.", "Cherche le mot chiffré : une durée.", "C'est la deuxième exigence."] }),
-        reqCoverage('ciel-c1-a2', { tag: tg('req', 1), hints: ["Compte les flèches verify.", "Une exigence a perdu sa flèche verify."] }, 't2'),
-        reqFill('ciel-c1-a3', { tag: tg('req', 2), hints: ["Qui contrôle ? Un test.", "Qui répond à l'exigence ? Un bloc."], why: "Savoir nommer le lien, c'est savoir ce que l'on affirme dans le dossier." }),
-      ],
-    },
-    {
-      id: 'ciel-c2', n: 'C2', title: 'Les blocs : de quoi est-il fait ?', level: 2,
-      objectives: ['Distinguer un bloc (un type) et un exemplaire', 'Lire une composition', 'Compléter un BDD simple'],
+      success: 'Les sept étapes réussies.',
+      pourquoi: "Avant de construire quoi que ce soit, NovaTech a écrit ce qu'elle attend. Si personne ne contrôle une attente, on ne sait pas si elle est tenue.",
+      situation: "NovaTech a rédigé ses attentes pour l'ouverture de session. Tu les lis comme le ferait un technicien avant d'intervenir.",
+    }, [
+      st("Voici les phrases écrites par NovaTech. <b>Clique celle qui impose une durée maximale.</b>", one('ciel-c1-a1', reqAuth(), 'La phrase qui impose une durée maximale', ['ex2'], 'EX-02 fixe une limite chiffrée : moins de 3 secondes.', { ex1: 'EX-01 parle de qui authentifie les postes, pas d\'une durée.', ex3: 'EX-03 parle de la conservation des comptes.' }, { tag: tg('req', 1), hints: ['Cherche un chiffre.', 'Pense à « secondes ».'] }), { w: 'exigence', def: "une promesse que le système doit tenir. Elle porte un numéro (EX-02) pour qu'on puisse la citer sans la recopier." }),
+      st("Une bonne promesse doit pouvoir être vérifiée par un « oui » ou un « non ». Compare deux façons d'écrire la même attente.", quiz('ciel-c1-a2', 'Laquelle de ces deux exigences peut-on vérifier ?', [
+        N("« L'ouverture de session doit être rapide »", "« Rapide » n'est pas mesurable : chacun a sa propre idée."),
+        Y("« L'ouverture de session aboutit en moins de 3 secondes »", 'On peut chronométrer et répondre oui ou non.'),
+      ], { why: "C'est pour cela que les exigences contiennent des chiffres ou des règles précises." })),
+      st("Une promesse a besoin d'un responsable. Dans le dessin, une flèche en pointillés relie un composant à la promesse qu'il tient. <b>Qui tient EX-03</b> (les comptes sont conservés dans un annuaire unique) ?", one('ciel-c1-a3', reqAuth(), 'Le composant qui tient EX-03', ['dir'], "La flèche part du composant Annuaire vers EX-03 : c'est lui qui conserve les comptes.", { srv: "Le serveur vérifie les mots de passe mais ne conserve pas les comptes." }, { tag: tg('req', 1), hints: ["Qui conserve les comptes ?"] }), { w: 'satisfy', def: "la flèche du composant vers l'exigence : « ce composant répond à cette exigence »." }),
+      st("Comment sait-on qu'une promesse est tenue ? On la teste. <b>Clique le test qui contrôle EX-02</b> (la durée).", one('ciel-c1-a4', reqAuth(), 'Le test qui contrôle EX-02', ['t2'], 'T-02 fait 10 ouvertures chronométrées : il mesure la durée.', { t1: 'T-01 contrôle EX-01.', t3: 'T-03 contrôle EX-03.' }, { tag: tg('req', 1) }), { w: 'verify', def: "la flèche du test vers l'exigence : « ce test contrôle cette exigence »." }),
+      st("Teste une idée : que se passe-t-il quand on supprime un test ? Fais les deux essais.", exploreReq('ciel-c1-a5'), undefined, "Une exigence sans test n'est plus contrôlée : c'est exactement ce que cherche un technicien qui relit le dossier."),
+      st("Un test a été effacé du dessin par erreur. Retrouve quelle exigence n'est plus contrôlée.", reqCoverage('ciel-c1-a6', { tag: tg('req', 1), hints: ['Compte les flèches qui arrivent sur chaque exigence.', 'Une exigence a perdu sa flèche « verify ».'] }, 't2')),
+      st("À toi de compléter : quelle flèche pour relier un composant, quelle flèche pour relier un test ?", reqFill('ciel-c1-a7', { tag: tg('req', 2), hints: ['Qui contrôle ? Un test.', 'Qui répond à la promesse ? Un composant.'], why: "Savoir nommer la flèche, c'est savoir ce qu'on affirme dans le dossier." })),
+    ]),
+    guided({
+      id: 'ciel-c2', n: 'C2', title: "Mission : l'inventaire du service", level: 2,
+      objectives: ['Distinguer un type de composant et un exemplaire', 'Reconnaître ce qui fait partie du service', 'Compléter un schéma de composants'],
       prereq: ['C1'],
-      success: 'Lecture exacte de la composition et BDD complété.',
-      pourquoi: "Avant de dépanner ou d'installer, il faut connaître les constituants du système et ce qui fait partie de quoi.",
-      cours: [
-        "Un <b>bloc</b> décrit un type d'élément (ServeurAuthentification). Ses valeurs sont écrites dessous (adresseIP : String).",
-        "La <b>composition</b> (losange plein côté du tout) dit « est composé de » : le système contient ses parties.",
-        "Une <b>association</b> (trait simple) relie deux blocs sans dire que l'un fait partie de l'autre.",
-      ],
-      exemple: { diagram: bddAuth(), notes: ["Le losange est du côté de OuvertureDeSession : il est composé du serveur et de l'annuaire.", "PosteDeTravail est seulement associé : il utilise le système."] },
-      activities: [
-        bddQuiz('ciel-c2-a1', { tag: tg('bdd', 1) }),
-        bddRead('ciel-c2-a2', { tag: tg('bdd', 1), hints: ['Où est le losange ?', 'Le losange est côté du tout.'], why: "Lire le sens d'une composition évite de confondre le tout et la partie." }),
-        bddFill('ciel-c2-a3', { tag: tg('bdd', 2), hints: ['Quel bloc conserve des comptes ?', 'Le serveur et l\'annuaire font partie du système.'] }),
-      ],
-    },
-    {
-      id: 'ciel-c3', n: 'C3', title: 'Les blocs internes : comment sont-ils reliés ?', level: 2,
-      objectives: ['Lire les parties et les connecteurs', 'Suivre un flux dans un IBD', 'Compléter un IBD simple'],
+      success: 'Les cinq étapes réussies.',
+      pourquoi: "Avant de réparer ou d'installer, on dresse l'inventaire : de quoi est fait le service, et qui en fait vraiment partie.",
+      situation: "Le technicien veut savoir de quoi est fait le service d'ouverture de session.",
+    }, [
+      st("Voici l'inventaire du service. <b>Clique le rectangle qui décrit un serveur d'authentification.</b>", one('ciel-c2-a1', bddAuth(), "Le rectangle du serveur d'authentification", ['srv'], 'ServeurAuthentification décrit ce type de composant.', { dir: "L'annuaire conserve les comptes : ce n'est pas le serveur d'authentification." }, { tag: tg('bdd', 1) }), { w: 'bloc', def: "un rectangle = la fiche d'identité d'un <b>type</b> de composant (ses caractéristiques sont écrites dessous)." }),
+      st("Tu viens de voir qu'un rectangle est une <b>fiche</b>. Un piège classique : la confondre avec la machine réelle. Lis bien la question avant de répondre.", bddQuiz('ciel-c2-a2', { tag: tg('bdd', 1) })),
+      st("Joue avec le service : retire un composant et regarde ce qu'il devient. Fais les deux essais.", exploreBdd('ciel-c2-a3'), { w: 'composition', def: "le trait terminé par un <b>losange plein</b> : « fait partie de ». Le losange se place du côté du tout." }, "Le serveur fait partie du service (losange). Le poste, lui, est seulement relié par un trait simple : il l'utilise."),
+      st("Tu sais maintenant lire un losange. Mets-le en pratique sur le schéma : coche <b>toutes</b> les phrases qui sont vraies, pas seulement la première qui te semble juste.", bddRead('ciel-c2-a4', { tag: tg('bdd', 1), hints: ['Où est le losange ?', 'Le losange est du côté du tout.'], why: "Lire le sens d'une composition évite de confondre le tout et la partie." })),
+      st("À toi de compléter l'inventaire : le nom manquant et la nature du lien.", bddFill('ciel-c2-a5', { tag: tg('bdd', 2), hints: ['Quel composant conserve des comptes ?', 'Est-ce une partie du service ?'] })),
+    ]),
+    guided({
+      id: 'ciel-c3', n: 'C3', title: "Mission : suivre le chemin d'une connexion", level: 2,
+      objectives: ['Repérer les exemplaires et leurs liens', 'Prévoir ce qui est bloqué quand un maillon tombe', 'Compléter un schéma de liaisons'],
       prereq: ['C2'],
-      success: 'Trois repérages, le chemin du flux et le complément d\'IBD réussis.',
-      pourquoi: "Dans une panne ou une installation, on doit savoir qui parle à qui : l'IBD montre les liens réels entre les parties.",
-      cours: [
-        "Une <b>partie</b> est un exemplaire d'un bloc : « serveurAuth : ServeurAuthentification ». Le nom est à gauche, le type à droite.",
-        "Un <b>connecteur</b> relie deux parties : il montre qu'elles échangent. Son nom dit ce qui circule.",
-        "Si deux parties n'ont pas de connecteur direct, elles ne se parlent pas directement.",
-      ],
-      exemple: { diagram: ibdAuth(v), notes: ["Le poste parle au serveur ; le serveur parle à l'annuaire.", "Aucun lien direct poste - annuaire."] },
-      activities: [
-        ibdIdentify('ciel-c3-a1', { tag: tg('ibd', 1), hints: ['Les parties sont les rectangles, les connecteurs les traits.'] }, v),
-        ibdTrace('ciel-c3-a2', { tag: tg('ibd', 1), hints: ['Par où part la demande ?', 'Suis les connecteurs un par un.'] }, v),
-        ibdFill('ciel-c3-a3', { tag: tg('ibd', 2), hints: ['Quel type est écrit sous la partie ?'] }),
-      ],
-    },
-    {
-      id: 'ciel-c4', n: 'C4', title: 'La séquence : dans quel ordre ?', level: 2,
-      objectives: ['Lire une séquence de haut en bas', 'Remettre des messages dans l\'ordre et expliquer pourquoi', 'Compléter un message manquant'],
+      success: 'Les cinq étapes réussies.',
+      pourquoi: "Quand quelque chose tombe, il faut savoir qui parle à qui pour trouver ce qui est touché.",
+      situation: `Tu suis la connexion de Lina depuis ${v.inst} jusqu'à l'annuaire.`,
+    }, [
+      st(`Ici, on ne décrit plus des fiches mais les <b>vrais</b> éléments du site. <b>Clique le poste de Lina.</b>`, one('ciel-c3-a1', ibdAuth(v), 'Le poste de Lina', ['poste'], `« ${v.inst} : PosteDeTravail » est le poste réel, fabriqué d'après la fiche PosteDeTravail.`, { auth: "C'est le serveur d'authentification." }, { tag: tg('ibd', 1) }), { w: 'partie', def: "un exemplaire concret d'un bloc : le poste de Lina est <b>une partie</b> construite d'après la fiche PosteDeTravail." }),
+      st("Lina ouvre sa session. <b>Clique, dans l'ordre, les éléments que sa demande traverse</b> jusqu'à l'annuaire.", ibdTrace('ciel-c3-a2', { tag: tg('ibd', 1), hints: ['Par où part la demande ?', 'Suis les traits un par un.'] }, v), { w: 'connecteur', def: "le trait entre deux parties : il montre qu'elles échangent. Son nom dit ce qui circule." }),
+      st("Avant d'essayer, tu vas <b>prédire</b>. Réfléchis, puis justifie.", predict('ciel-c3-a3', v, { tag: tg('ibd', 1) })),
+      st("Tu as fait ta prédiction : place à l'expérience. Essaie les trois situations l'une après l'autre et compare avec ce que tu avais prévu.", exploreIbd('ciel-c3-a4', v), { w: 'dépendance', def: "quand un élément ne peut pas fonctionner sans un autre. Si le maillon du bout tombe, tout ce qui est avant est touché." }),
+      st("Tu sais maintenant lire ce schéma. Complète-le : deux informations manquent. Pour chacune, demande-toi ce que le schéma de l'étape précédente t'a appris.", ibdFill('ciel-c3-a5', { tag: tg('ibd', 2), hints: ['Le type est écrit sous la partie.', 'Que demande le serveur à l\'annuaire ?'] })),
+    ]),
+    guided({
+      id: 'ciel-c4', n: 'C4', title: "Mission : reconstituer ce qui s'est passé", level: 2,
+      objectives: ["Lire un échange de haut en bas", "Expliquer pourquoi l'ordre est imposé", "Retrouver un message manquant"],
       prereq: ['C3'],
-      success: 'Repérages exacts, ordre correct et message manquant retrouvé.',
-      pourquoi: "Un échange mal ordonné ne fonctionne pas : la séquence explique pourquoi l'accès n'est accordé qu'après vérification.",
-      cours: [
-        "Chaque <b>ligne de vie</b> (trait vertical) est un participant. Le temps passe de haut en bas.",
-        "Une <b>flèche pleine</b> est un appel ; une <b>flèche en pointillés</b> est un retour. Une flèche qui boucle est un traitement interne.",
-        "On ne peut pas répondre avant d'avoir reçu une demande : l'ordre est contraint par la logique du système.",
-      ],
-      exemple: { diagram: seqAuth(), notes: ["Cinq messages : demande, recherche, compte, vérification, accès accordé.", "La vérification est un traitement interne du serveur."] },
-      activities: [
-        seqIdentify('ciel-c4-a1', { tag: tg('seq', 1), hints: ['Le premier message est tout en haut.'] }),
-        seqOrder('ciel-c4-a2', { tag: tg('seq', 2), hints: ['Qui déclenche l\'échange ?', 'Une réponse suit sa demande.'], why: "Expliquer l'ordre, c'est montrer qu'on comprend le fonctionnement et pas seulement le dessin." }, s),
-        seqFill('ciel-c4-a3', { tag: tg('seq', 2), hints: ['Que renvoie l\'annuaire ?'] }),
-      ],
-    },
+      success: 'Les cinq étapes réussies.',
+      pourquoi: "Savoir dans quel ordre les choses se passent permet de dire où l'échange s'est arrêté.",
+      situation: "Tu reconstitues, message après message, ce qui se passe quand Lina ouvre sa session.",
+    }, [
+      st("Voici le déroulé d'une ouverture de session réussie. <b>Lis-le message par message</b> en cliquant les boutons dans l'ordre.", exploreSeq('ciel-c4-a1'), { w: 'séquence', def: "le dessin d'un échange dans le temps : on le lit de haut en bas. Chaque trait vertical est un participant (<b>ligne de vie</b>), chaque flèche un <b>message</b>." }),
+      st("Tu sais lire le déroulé. Entraîne ton œil : sélectionne une consigne, puis clique l'élément correspondant dans le dessin.", seqIdentify('ciel-c4-a2', { tag: tg('seq', 1), hints: ['Le premier message est tout en haut.'] })),
+      st("Avant de remettre les messages dans l'ordre, une question de bon sens.", justifyOrder('ciel-c4-a3')),
+      st("À toi : remets les messages dans l'ordre et lis les explications.", seqOrder('ciel-c4-a4', { tag: tg('seq', 2), hints: ["Qui déclenche l'échange ?", 'Une réponse suit sa demande.'], why: "Expliquer l'ordre, c'est montrer qu'on comprend le fonctionnement et pas seulement le dessin." }, s)),
+      st("Dernière étape : un message a disparu du dessin. Retrouve-le.", seqFill('ciel-c4-a5', { tag: tg('seq', 2), hints: ["Que renvoie l'annuaire ?"] })),
+    ]),
     {
       id: 'ciel-c5', n: 'C5', title: 'Évaluation finale', level: 2, exam: true,
       objectives: ["Mobiliser l'ensemble du parcours sur un cas nouveau"],
@@ -120,7 +101,7 @@ export function ciel(v: Vars = V0, seed = 0): Parcours {
     id: 'ciel', name: 'Bac pro CIEL', levelLabel: 'Niveaux 1 et 2', target: 2,
     orient: 'Lire un dossier technique et en expliquer les informations.',
     situation: "Tu es technicien à NovaTech : tu lis les diagrammes du dossier pour comprendre une installation.",
-    statut: 'Niveaux visés : choix pédagogique proposé (à valider avec le référentiel).',
+    statut: 'Niveaux visés : choix pédagogique.',
     cases: [
       { d: 'req', level: 1 }, { d: 'req', level: 2 }, { d: 'bdd', level: 1 }, { d: 'bdd', level: 2 },
       { d: 'ibd', level: 1 }, { d: 'ibd', level: 2 }, { d: 'seq', level: 1 }, { d: 'seq', level: 2 },
